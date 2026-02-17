@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate Advanced Weather App</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI, sans-serif;
+}
+
+body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:linear-gradient(135deg,#1e3c72,#2a5298);
+    transition:0.5s;
+}
+
+.container{
+    width:95%;
+    max-width:420px;
+    background:rgba(255,255,255,0.15);
+    backdrop-filter:blur(15px);
+    border-radius:20px;
+    padding:25px;
+    color:white;
+    text-align:center;
+    box-shadow:0 10px 40px rgba(0,0,0,0.4);
+}
+
+h1{
+    margin-bottom:15px;
+}
+
+.search-box{
+    display:flex;
+    gap:10px;
+    margin-bottom:15px;
+}
+
+input{
+    flex:1;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    outline:none;
+}
+
+button{
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+    transition:0.3s;
+}
+
+.search-btn{ background:#ffcc00; }
+.search-btn:hover{ background:#ffaa00; }
+
+.unit-btn{ background:#00e0ff; margin-top:10px; }
+.unit-btn:hover{ background:#00bcd4; }
+
+.location-btn{
+    background:#4CAF50;
+    margin-top:10px;
+}
+.location-btn:hover{
+    background:#43a047;
+}
+
+.weather-main{
+    margin-top:15px;
+}
+
+.weather-main img{
+    width:80px;
+}
+
+.temp{
+    font-size:32px;
+    font-weight:bold;
+}
+
+.details{
+    margin-top:10px;
+    font-size:14px;
+}
+
+.forecast{
+    margin-top:20px;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:8px;
+    font-size:12px;
+}
+
+.forecast div{
+    background:rgba(255,255,255,0.2);
+    padding:8px;
+    border-radius:10px;
+}
+
+.loading{
+    margin-top:15px;
+    display:none;
+}
+
+@media(max-width:450px){
+    .forecast{
+        grid-template-columns:repeat(3,1fr);
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>🌤 Advanced Weather</h1>
+
+    <div class="search-box">
+        <input type="text" id="cityInput" placeholder="Enter city">
+        <button class="search-btn" onclick="getWeather()">Search</button>
+    </div>
+
+    <button class="location-btn" onclick="getLocationWeather()">📍 Use My Location</button>
+
+    <div class="weather-main" id="weatherMain"></div>
+
+    <button class="unit-btn" onclick="toggleUnit()">Toggle °C / °F</button>
+
+    <div class="forecast" id="forecast"></div>
+
+    <div class="loading" id="loading">Loading...</div>
+</div>
+
+<script>
+const apiKey = "6414327fb6195da426c35c9710c3f553";
+let currentUnit = "metric";
+let currentCity = "";
+
+const weatherMain = document.getElementById("weatherMain");
+const forecastDiv = document.getElementById("forecast");
+const loading = document.getElementById("loading");
+
+function getWeather(){
+    const city = document.getElementById("cityInput").value;
+    if(!city) return alert("Enter city name");
+    currentCity = city;
+    fetchWeather(city);
+}
+
+function fetchWeather(city){
+    loading.style.display="block";
+    weatherMain.innerHTML="";
+    forecastDiv.innerHTML="";
+
+    fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=${currentUnit}&appid=${apiKey}`)
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.cod!=200){
+            loading.style.display="none";
+            weatherMain.innerHTML="City not found!";
+            return;
+        }
+
+        displayWeather(data);
+        changeBackground(data.weather[0].main);
+        fetchForecast(city);
+    });
+}
+
+function fetchForecast(city){
+    fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=${currentUnit}&appid=${apiKey}`)
+    .then(res=>res.json())
+    .then(data=>{
+        loading.style.display="none";
+        const daily = data.list.filter(item=>item.dt_txt.includes("12:00:00"));
+        daily.slice(0,5).forEach(day=>{
+            const div=document.createElement("div");
+            div.innerHTML=`
+                <p>${new Date(day.dt_txt).toLocaleDateString()}</p>
+                <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png">
+                <p>${day.main.temp}°</p>
+            `;
+            forecastDiv.appendChild(div);
+        });
+    });
+}
+
+function displayWeather(data){
+    weatherMain.innerHTML=`
+        <h2>${data.name}</h2>
+        <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png">
+        <div class="temp">${data.main.temp}°</div>
+        <div>${data.weather[0].description}</div>
+        <div class="details">
+            Humidity: ${data.main.humidity}%<br>
+            Wind: ${data.wind.speed} m/s<br>
+            Pressure: ${data.main.pressure} hPa
+        </div>
+    `;
+}
+
+function toggleUnit(){
+    currentUnit = currentUnit==="metric"?"imperial":"metric";
+    if(currentCity) fetchWeather(currentCity);
+}
+
+function changeBackground(condition){
+    const body=document.body;
+    if(condition.includes("Cloud")) body.style.background="linear-gradient(135deg,#757f9a,#d7dde8)";
+    else if(condition.includes("Rain")) body.style.background="linear-gradient(135deg,#373b44,#4286f4)";
+    else if(condition.includes("Clear")) body.style.background="linear-gradient(135deg,#f7971e,#ffd200)";
+    else body.style.background="linear-gradient(135deg,#1e3c72,#2a5298)";
+}
+
+function getLocationWeather(){
+    if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(position=>{
+            const lat=position.coords.latitude;
+            const lon=position.coords.longitude;
+
+            fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=${currentUnit}&appid=${apiKey}`)
+            .then(res=>res.json())
+            .then(data=>{
+                currentCity=data.name;
+                displayWeather(data);
+                fetchForecast(data.name);
+                changeBackground(data.weather[0].main);
+            });
+        });
+    } else {
+        alert("Geolocation not supported");
+    }
+}
+</script>
+
+</body>
+</html>
